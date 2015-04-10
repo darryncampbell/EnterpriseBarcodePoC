@@ -15,17 +15,32 @@ import android.util.Log;
 public class EnterpriseBarcode extends CordovaPlugin {
     public static final String LOG_TAG = "EnterpriseBarcode";
     private ZebraAndroidExtensions zebraExtensions = null;
-    private int userEnabledScanner = 0;
+    private JSONObject argumentsToEnable = null;
 
     public static void FailureCallback(CallbackContext callbackContext, String message)
     {
-        JSONObject failureMessage = new JSONObject();
-        try {
-            failureMessage.put("message", message);
-        } catch (JSONException e) {
-            Log.d(LOG_TAG, "JSON Error");
+        if (callbackContext != null) {
+            JSONObject failureMessage = new JSONObject();
+            try {
+                failureMessage.put("message", message);
+            } catch (JSONException e) {
+                Log.e(LOG_TAG, "JSON Error");
+            }
+            callbackContext.error(failureMessage);
         }
-        callbackContext.error(failureMessage);
+    }
+
+    public static void SuccessCallback(CallbackContext callbackContext, String message)
+    {
+        if (callbackContext != null) {
+            JSONObject successMessage = new JSONObject();
+            try {
+                successMessage.put("message", message);
+            } catch (JSONException e) {
+                Log.e(LOG_TAG, "JSON Error");
+            }
+            callbackContext.success(successMessage);
+        }
     }
 
     /**
@@ -49,26 +64,24 @@ public class EnterpriseBarcode extends CordovaPlugin {
 	public void onResume(boolean multitasking)
 	{
 		Log.d(LOG_TAG, "On Resume");
-        //  todo - start EMDK
-        //  todo - need static log string
-        InitializeZebraExtensions(null, userEnabledScanner);
-        zebraExtensions.onResume();
+        //  EMDK seems reliable without having to re-enable it on resume
+//        InitializeZebraExtensions(null);
 	}
 	
 	public void onPause(boolean multitasking)
 	{
 		Log.d(LOG_TAG, "On Pause");
-        //  todo - stop EMDK
-        zebraExtensions.destroy();
+        //  EMDK Seems reliable without having to disable it on pause
+//        zebraExtensions.destroy();
 	}
 
-    public void InitializeZebraExtensions(CallbackContext callbackContext, int userEnabledScanner)
+    public void InitializeZebraExtensions(CallbackContext callbackContext)
     {
         Context c = this.cordova.getActivity().getApplicationContext();
         if (ZebraAndroidExtensions.isEMDKAvailable(c))
         {
             //  Create the EMDK object
-            zebraExtensions = new ZebraAndroidExtensions(c, callbackContext, userEnabledScanner);
+            zebraExtensions = new ZebraAndroidExtensions(c, callbackContext);
         }
         else
         {
@@ -88,11 +101,8 @@ public class EnterpriseBarcode extends CordovaPlugin {
         Log.d(LOG_TAG, "Args: " + args.length());
         if (action.equals("initializeBarcode")) {
             JSONObject r = new JSONObject();
-            //  todo - Initialise EMDK
             //  todo - get EMDK 3.0  jar
-            //  todo - don't delete or overwrite my android platform code
-            InitializeZebraExtensions(callbackContext, userEnabledScanner);
-            //callbackContext.success(r);
+            InitializeZebraExtensions(callbackContext);
         }
         else if (action.equals("enable"))
         {
@@ -102,6 +112,7 @@ public class EnterpriseBarcode extends CordovaPlugin {
                 try {
                     JSONObject arguments = args.getJSONObject(0);
                     arguments = arguments.getJSONObject("options");
+                    argumentsToEnable = arguments;
                     Log.d(LOG_TAG, String.valueOf(arguments));
                 }
                 catch (JSONException je)
@@ -110,16 +121,14 @@ public class EnterpriseBarcode extends CordovaPlugin {
                 }
             }
             Log.d(LOG_TAG, "Enable Scanner");
-            userEnabledScanner = 1;
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
-                    ScannerEnable(callbackContext);
+                    ScannerEnable(callbackContext, argumentsToEnable);
                 }
             });
         }
         else if (action.equalsIgnoreCase("disable")) {
             Log.d(LOG_TAG, "Disable Scanner");
-            userEnabledScanner = 0;
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
                     ScannerDisable(callbackContext);
@@ -147,11 +156,13 @@ public class EnterpriseBarcode extends CordovaPlugin {
         return true;
     }
 
+
+
     //--------------------------------------------------------------------------
     // LOCAL METHODS
     //--------------------------------------------------------------------------
 
-    public JSONObject ScannerEnable(CallbackContext callbackContext)
+    public JSONObject ScannerEnable(CallbackContext callbackContext, JSONObject userSpecifiedArgumentsToEnable)
     {
         if (zebraExtensions == null)
         {
@@ -166,7 +177,7 @@ public class EnterpriseBarcode extends CordovaPlugin {
         else
         {
             //  EMDK is ready, let's go
-            return zebraExtensions.enableScanner(callbackContext);
+            return zebraExtensions.enableScanner(callbackContext, userSpecifiedArgumentsToEnable);
         }
     }
 

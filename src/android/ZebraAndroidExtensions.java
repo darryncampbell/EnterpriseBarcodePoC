@@ -9,6 +9,7 @@ import com.symbol.emdk.EMDKResults;
 import com.symbol.emdk.barcode.BarcodeManager;
 import com.symbol.emdk.barcode.ScanDataCollection;
 import com.symbol.emdk.barcode.Scanner;
+import com.symbol.emdk.barcode.ScannerConfig;
 import com.symbol.emdk.barcode.ScannerException;
 import com.symbol.emdk.barcode.ScannerInfo;
 import com.symbol.emdk.barcode.ScannerResults;
@@ -22,7 +23,6 @@ import org.json.JSONObject;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
@@ -35,12 +35,12 @@ public class ZebraAndroidExtensions implements Serializable {
     private static Context context;
     private static final String LOG_TAG = "Symbol Barcode";
 
-    public ZebraAndroidExtensions(Context c, CallbackContext callbackContext, int userEnabledScanner)
+    public ZebraAndroidExtensions(Context c, CallbackContext callbackContext)
     {
         if (isEMDKAvailable(c))
         {
             //  Create the EMDK object
-            emdk = new EMDKInterface(c, true, callbackContext, userEnabledScanner);
+            emdk = new EMDKInterface(c, true, callbackContext);
             this.context = c;
         }
         else
@@ -51,7 +51,7 @@ public class ZebraAndroidExtensions implements Serializable {
     {
         try {
 
-            EMDKInterface test = new EMDKInterface(c, false, null, -1);
+            EMDKInterface test = new EMDKInterface(c, false, null);
             Log.i(LOG_TAG, "EMDK is available on this device");
             return true;
         }
@@ -77,7 +77,7 @@ public class ZebraAndroidExtensions implements Serializable {
     {
         if (emdk != null)
         {
-            emdk.disableScanner(false);
+            emdk.disableScanner(false, null);
             emdk.Destroy();
         }
     }
@@ -91,9 +91,9 @@ public class ZebraAndroidExtensions implements Serializable {
     }
 
 
-    public JSONObject enableScanner(CallbackContext callbackContext) {
+    public JSONObject enableScanner(CallbackContext callbackContext, JSONObject userSpecifiedArgumentsToEnable) {
         if (emdk != null)
-            return emdk.enableScanner(callbackContext);
+            return emdk.enableScanner(callbackContext, userSpecifiedArgumentsToEnable);
         else {
             EnterpriseBarcode.FailureCallback(callbackContext, "EMDK is not available");
             return null;
@@ -103,7 +103,7 @@ public class ZebraAndroidExtensions implements Serializable {
     public JSONObject disableScanner(CallbackContext callbackContext) {
         if (emdk != null)
         {
-            emdk.disableScanner(true);
+            emdk.disableScanner(true, callbackContext);
             return null;
         }
         else
@@ -113,12 +113,9 @@ public class ZebraAndroidExtensions implements Serializable {
         }
     }
 
-    public void onResume()
-    {
-        emdk.onResume();
+    public void setUserRequestedScanner(String friendlyName) {
+        if (emdk != null) {emdk.setUserRequestedScanner(friendlyName);}
     }
-
-
 }
 
 class EMDKInterface implements EMDKManager.EMDKListener, Scanner.StatusListener, Scanner.DataListener
@@ -129,30 +126,26 @@ class EMDKInterface implements EMDKManager.EMDKListener, Scanner.StatusListener,
     private EMDKManager emdkManager = null;
     private BarcodeManager barcodeManager = null;
     private Scanner scanner = null;
-    private List<ScannerInfo> deviceList = null;
-    private static final String LOG_TAG = "Symbol Barcode";
-    private HashMap ScannerConnectionTypes = new HashMap();
-    private ScannerInfo defaultScanner = null;
-    private CallbackContext scanCallbackContext = null;
-    private CallbackContext initialisationCallbackContext = null;
+    private List<ScannerInfo> scannersOnDevice = null;
+    private static final String LOG_TAG = "Enterprise Barcode";
+    private ScannerInfo userRequestedScanner = null;    ///<  The scanner requested by the user
+    private ScannerInfo defaultScanner = null;          ///<  The scanner which the driver reports as the default
+    private CallbackContext scanCallbackContext = null; ///<  The Cordova callback context for each scan
+    private CallbackContext initialisationCallbackContext = null;   ///<  The Cordova callback for our first plugin initialisation
 
-    public EMDKInterface(Context c, boolean createManager, CallbackContext callbackContext, int userEnabledScanner)
+    public EMDKInterface(Context c, boolean createManager, CallbackContext callbackContext)
     {
         this.userEnabledScanner = userEnabledScanner;
         if (createManager) {
             this.initialisationCallbackContext = callbackContext;
             //The EMDKManager object will be created and returned in the callback.
             EMDKResults results = EMDKManager.getEMDKManager(c, this);
-
             //Check the return status of getEMDKManager
             if (results.statusCode == EMDKResults.STATUS_CODE.SUCCESS) {
-                // EMDKManager object creation success
                 Log.i(LOG_TAG, "EMDK manager has been successfully created");
 
             } else {
-                // EMDKManager object creation failed
                 Log.w(LOG_TAG, "Some error has occurred creating the EMDK manager.  EMDK functionality will not be available");
-
             }
         }
     }
@@ -161,18 +154,16 @@ class EMDKInterface implements EMDKManager.EMDKListener, Scanner.StatusListener,
     {
         //  Shut down the EMDK
         if (emdkManager != null)
-            emdkManager.release();
+            emdkManager.release(EMDKManager.FEATURE_TYPE.BARCODE);
     }
 
     @Override
     public void onOpened(EMDKManager emdkManager) {
         this.emdkManager = emdkManager;
         this.barcodeManager = (BarcodeManager) emdkManager.getInstance(EMDKManager.FEATURE_TYPE.BARCODE);
+        JSONObject scanners = enumerateScanners();
         //  If the user had previously enable the scanner then re-enable it here
-        if (this.userEnabledScanner == 1)
-            enableScanner(null);
         if (this.initialisationCallbackContext != null) {
-            JSONObject scanners = enumerateScanners();
             this.initialisationCallbackContext.success(scanners);
             //  Only want to call it once, not for every subsequent re-entry
             this.initialisationCallbackContext = null;
@@ -189,7 +180,7 @@ class EMDKInterface implements EMDKManager.EMDKListener, Scanner.StatusListener,
 
     public Boolean IsReady()
     {
-        return (this.emdkManager != null);
+        return (this.emdkManager != null && this.barcodeManager != null);
     }
 
     public JSONObject enumerateScanners()
@@ -198,12 +189,10 @@ class EMDKInterface implements EMDKManager.EMDKListener, Scanner.StatusListener,
         JSONArray scannersArray = new JSONArray();
         if (barcodeManager != null)
         {
-            //deviceList = new ArrayList<ScannerInfo>();
-            deviceList = barcodeManager.getSupportedDevicesInfo();
-
-            if (deviceList.size() != 0)
+            scannersOnDevice = barcodeManager.getSupportedDevicesInfo();
+            if (scannersOnDevice.size() != 0)
             {
-                Iterator<ScannerInfo> it = deviceList.iterator();
+                Iterator<ScannerInfo> it = scannersOnDevice.iterator();
                 while(it.hasNext()) {
                     ScannerInfo scnInfo = it.next();
                     JSONObject currentScanner = new JSONObject();
@@ -232,31 +221,92 @@ class EMDKInterface implements EMDKManager.EMDKListener, Scanner.StatusListener,
         return scanners;
     }
 
+    private void ProcessPropertiesPreEnable(JSONObject arguments) {
+        //  Do the needful on the properties passed in from the user:
+        if (arguments == null)
+            return;
+        if (arguments.has("friendlyName"))
+        {
+            //  Set the scanner's friendly name to be used
+            try {
+                setUserRequestedScanner(arguments.getString("friendlyName"));
+            } catch (JSONException e) {
+                Log.w(LOG_TAG, "Malformed JSON whilst extracting friendly scanner name");
+            }
+        }
+    }
 
-    public JSONObject enableScanner(CallbackContext callbackContext) {
+    private void ProcessPropertiesPostEnable(JSONObject arguments, Scanner scanner) throws ScannerException
+    {
+        if (arguments == null)
+            return;
+        ScannerConfig scannerConfig = scanner.getConfig();
+        try {
+            if (arguments.has("ean8Enabled")) {
+                scannerConfig.decoderParams.ean8.enabled = arguments.getBoolean("ean8Enabled");
+            }
+            //  todo - Add more here
+        }
+        catch (JSONException e)
+        {
+            Log.w(LOG_TAG, "Malformed JSON whilst processing decoders: " + e.getMessage());
+        }
+        scanner.setConfig(scannerConfig);
+    }
+
+    public boolean setUserRequestedScanner(String friendlyName)
+    {
+        if (scannersOnDevice == null)
+            return false;
+
+        if (scannersOnDevice.size() != 0)
+        {
+            Iterator<ScannerInfo> it = scannersOnDevice.iterator();
+            while(it.hasNext()) {
+                ScannerInfo scnInfo = it.next();
+                if (scnInfo.getFriendlyName().equalsIgnoreCase(friendlyName)) {
+                    userRequestedScanner = scnInfo;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+
+    public JSONObject enableScanner(CallbackContext callbackContext, JSONObject userSpecifiedArgumentsToEnable) {
+        ProcessPropertiesPreEnable(userSpecifiedArgumentsToEnable);
+        //  Handle the case where the user is switching scanners
         if (scannerEnabled)
-            return null;
+            disableScanner(true, null);
         scanCallbackContext = callbackContext;
-        enumerateScanners();
-        if (deviceList == null || defaultScanner == null)
+//        enumerateScanners();
+        if (scannersOnDevice == null || (userRequestedScanner == null && defaultScanner == null)) {
+            EnterpriseBarcode.FailureCallback(callbackContext, "Scanners not present on device or did not initialise properly");
             return null;
-        scanner = barcodeManager.getDevice(defaultScanner);
+        }
+        if (userRequestedScanner != null)
+            scanner = barcodeManager.getDevice(userRequestedScanner);
+        else
+            scanner = barcodeManager.getDevice(defaultScanner);
         scanner.addDataListener(this);
         scanner.addStatusListener(this);
         try
         {
             scannerEnabled = true;
             scanner.enable();
+            ProcessPropertiesPostEnable(userSpecifiedArgumentsToEnable, scanner);
             scanner.read();
         }
         catch (ScannerException e)
         {
             Log.e(LOG_TAG, "Exception enabling Scanner: " + e.getMessage());
+            EnterpriseBarcode.FailureCallback(callbackContext, "Exception enabling Scanner: " + e.getMessage());
         }
         return null;
     }
 
-    public void disableScanner(boolean fromUi)
+    public void disableScanner(boolean fromUi, CallbackContext callbackContext)
     {
         if (fromUi)
             scannerEnabled = false;
@@ -267,8 +317,10 @@ class EMDKInterface implements EMDKManager.EMDKListener, Scanner.StatusListener,
                 scanner.removeDataListener(this);
                 scanner.removeStatusListener(this);
                 scanner.disable();
+                EnterpriseBarcode.SuccessCallback(callbackContext, "Scanner Disabled");
             } catch (ScannerException e) {
                 Log.e(LOG_TAG, "Exception disabling Scanner");
+                EnterpriseBarcode.FailureCallback(callbackContext, "Exception disabling Scanner: " + e.getMessage());
             }
         }
     }
@@ -279,9 +331,15 @@ class EMDKInterface implements EMDKManager.EMDKListener, Scanner.StatusListener,
             ArrayList <ScanDataCollection.ScanData> scanData = scanDataCollection.getScanData();
             if (scanData.size() > 0)
             {
-                String dataString = scanData.get(0).getData();
-                PluginResult result = new PluginResult(PluginResult.Status.OK, dataString);
-//                this.scanCallbackContext.success(dataString);
+                JSONObject scanDataResponse = new JSONObject();
+                try {
+                    scanDataResponse.put("data", scanData.get(0).getData());
+                    scanDataResponse.put("type", scanData.get(0).getLabelType());
+                    scanDataResponse.put("timestamp", scanData.get(0).getTimeStamp());
+                }
+                catch (JSONException e)
+                {}
+                PluginResult result = new PluginResult(PluginResult.Status.OK, scanDataResponse);
                 result.setKeepCallback(true);
                 this.scanCallbackContext.sendPluginResult(result);
             }
@@ -317,7 +375,4 @@ class EMDKInterface implements EMDKManager.EMDKListener, Scanner.StatusListener,
 
     }
 
-    public void onResume() {
-        //  If leave this app for another app and return to this app
-    }
 }

@@ -251,7 +251,7 @@ class EMDKInterface implements EMDKManager.EMDKListener, Scanner.StatusListener,
         }
         catch (ScannerException e)
         {
-            Log.e(LOG_TAG, "Exception enabling Scanner");
+            Log.e(LOG_TAG, "Exception enabling Scanner: " + e.getMessage());
         }
         return null;
     }

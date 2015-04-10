@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin id="com.symbol.enterprisebarcode" version="0.0.1" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
+    <name>Enterprise Barcode</name>
+    <js-module name="EnterpriseBarcode" src="www/EnterpriseBarcode.js">
+        <clobbers target="enterpriseBarcode" />
+    </js-module>
+	
+	<!-- android -->
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="EnterpriseBarcode" >
+                <param name="android-package" value="com.symbol.enterprisebarcode.EnterpriseBarcode"/>
+            </feature>
+        </config-file>
+		
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-permission android:name="com.symbol.emdk.permission.EMDK" />
+        </config-file>
+		
+		<config-file target="AndroidManifest.xml" parent="/manifest/application">
+			<uses-library android:name="com.symbol.emdk" android:required="false"/>
+        </config-file>
+		
+		<!--framework src="src/android/com.symbol.emdk.jar" custom="true" /-->
+
+        <source-file src="src/android/EnterpriseBarcode.java" target-dir="src/com/symbol/enterprisebarcode" />
+        <source-file src="src/android/ZebraAndroidExtensions.java" target-dir="src/com/symbol/enterprisebarcode" />
+        <source-file src="src/android/com.symbol.emdk.jar" target-dir="lib" />
+		<info>
+			Please ensure you have EMDK for Android 3.0 installed
+			Please set your project properties to include the following:
+			target='Symbol Technologies, Inc.:EMDK 3.0 (API 19):19'
+		</info>
+    </platform>
+	
+</plugin>

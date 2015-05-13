@@ -23,8 +23,10 @@
 		
 		<!--framework src="src/android/com.symbol.emdk.jar" custom="true" /-->
 
+        <source-file src="src/android/EMDKProxy.java" target-dir="src/com/symbol/enterprisebarcode" />
+        <source-file src="src/android/EMDKScannerInterface.java" target-dir="src/com/symbol/enterprisebarcode" />
         <source-file src="src/android/EnterpriseBarcode.java" target-dir="src/com/symbol/enterprisebarcode" />
-        <source-file src="src/android/ZebraAndroidExtensions.java" target-dir="src/com/symbol/enterprisebarcode" />
+        <source-file src="src/android/ScannerConfiguration.java" target-dir="src/com/symbol/enterprisebarcode" />
         <source-file src="src/android/com.symbol.emdk.jar" target-dir="lib" />
 		<info>
 			Please ensure you have EMDK for Android 3.0 installed

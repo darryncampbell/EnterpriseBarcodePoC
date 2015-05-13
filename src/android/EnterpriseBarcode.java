@@ -4,19 +4,30 @@ import org.apache.cordova.CordovaWebView;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaInterface;
+import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import com.symbol.emdk.barcode.ScanDataCollection;
 
 import android.content.Context;
 import android.util.Log;
 
-
+/**
+ * Main interface class with the Cordova plugin, proxies all calls to the EMDK
+ */
 public class EnterpriseBarcode extends CordovaPlugin {
     public static final String LOG_TAG = "EnterpriseBarcode";
-    private ZebraAndroidExtensions zebraExtensions = null;
-    private JSONObject argumentsToEnable = null;
+    private EMDKProxy emdkProxy = null;
+    //  Need to maintain instance variables for the arguments as they are sent to sub classes
+    private JSONObject m_arguments = null;
+    private JSONObject m_argumentsToSetProps = null;
 
+    /**
+     * Static helper function to return a Failure to the user
+     * @param callbackContext
+     * @param message
+     */
     public static void FailureCallback(CallbackContext callbackContext, String message)
     {
         if (callbackContext != null) {
@@ -30,6 +41,11 @@ public class EnterpriseBarcode extends CordovaPlugin {
         }
     }
 
+    /**
+     * Static helper function to return a success message to the user
+     * @param callbackContext
+     * @param message
+     */
     public static void SuccessCallback(CallbackContext callbackContext, String message)
     {
         if (callbackContext != null) {
@@ -44,8 +60,27 @@ public class EnterpriseBarcode extends CordovaPlugin {
     }
 
     /**
-     * Constructor.
+     * Helper function for the Enable callback, can be called either to inform the user that
+     * the scanner has finished enabling or that a barcode has just been scanned.
+     * @param callbackContext
+     * @param enableMessage
      */
+    public static void EnableCallback(CallbackContext callbackContext, String enableMessage, String szData, ScanDataCollection.LabelType eType, String szTimestamp)
+    {
+        JSONObject scanDataResponse = new JSONObject();
+        try {
+            scanDataResponse.put("status", enableMessage);
+            scanDataResponse.put("data", szData);
+            scanDataResponse.put("type", eType);
+            scanDataResponse.put("timestamp", szTimestamp);
+        }
+        catch (JSONException e)
+        {}
+        PluginResult result = new PluginResult(PluginResult.Status.OK, scanDataResponse);
+        result.setKeepCallback(true);
+        callbackContext.sendPluginResult(result);
+    }
+
     public EnterpriseBarcode() {
     }
 
@@ -58,35 +93,34 @@ public class EnterpriseBarcode extends CordovaPlugin {
      */
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
-
     }
 
 	public void onResume(boolean multitasking)
 	{
 		Log.d(LOG_TAG, "On Resume");
         //  EMDK seems reliable without having to re-enable it on resume
-//        InitializeZebraExtensions(null);
+//        InitializeEMDKProxy(null);
 	}
 	
 	public void onPause(boolean multitasking)
 	{
 		Log.d(LOG_TAG, "On Pause");
         //  EMDK Seems reliable without having to disable it on pause
-//        zebraExtensions.destroy();
+//        emdkProxy.destroy();
 	}
 
-    public void InitializeZebraExtensions(CallbackContext callbackContext)
+    /**
+     * Attempt to initialise the EMDK, this will fail gracefully if the EMDK is not installed on the
+     * device
+     * @param callbackContext
+     */
+    public void InitializeEMDKProxy(CallbackContext callbackContext)
     {
         Context c = this.cordova.getActivity().getApplicationContext();
-        if (ZebraAndroidExtensions.isEMDKAvailable(c))
-        {
-            //  Create the EMDK object
-            zebraExtensions = new ZebraAndroidExtensions(c, callbackContext);
-        }
+        if (EMDKProxy.isEMDKAvailable(c))
+            emdkProxy = new EMDKProxy(c, callbackContext);
         else
-        {
             FailureCallback(callbackContext, "EMDK not available");
-        }
     }
 
     /**
@@ -101,8 +135,11 @@ public class EnterpriseBarcode extends CordovaPlugin {
         Log.d(LOG_TAG, "Args: " + args.length());
         if (action.equals("initializeBarcode")) {
             JSONObject r = new JSONObject();
-            //  todo - get EMDK 3.0  jar
-            InitializeZebraExtensions(callbackContext);
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    InitializeEMDKProxy(callbackContext);
+                }
+            });
         }
         else if (action.equals("enable"))
         {
@@ -112,7 +149,7 @@ public class EnterpriseBarcode extends CordovaPlugin {
                 try {
                     JSONObject arguments = args.getJSONObject(0);
                     arguments = arguments.getJSONObject("options");
-                    argumentsToEnable = arguments;
+                    m_arguments = arguments;
                     Log.d(LOG_TAG, String.valueOf(arguments));
                 }
                 catch (JSONException je)
@@ -123,7 +160,7 @@ public class EnterpriseBarcode extends CordovaPlugin {
             Log.d(LOG_TAG, "Enable Scanner");
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
-                    ScannerEnable(callbackContext, argumentsToEnable);
+                    ScannerEnable(callbackContext, m_arguments);
                 }
             });
         }
@@ -138,16 +175,40 @@ public class EnterpriseBarcode extends CordovaPlugin {
         else if (action.equals("enumerate"))
         {
             Log.d(LOG_TAG, "Enumerate");
-            //  todo - return failure if could not enumerate or if the scanner is unavailable
-            JSONObject scanners = enumerate();
-            if (scanners == null)
+            JSONObject scanners = enumerate(callbackContext);
+        }
+        else if (action.equals("getProperties"))
+        {
+            Log.d(LOG_TAG, "Get Properties");
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    ScannerGetProperties(callbackContext);
+                }
+            });
+        }
+        else if (action.equals("setProperties"))
+        {
+            Log.d(LOG_TAG, "Set Properties");
+            if (args.length() > 0)
             {
-                JSONObject failureReturn = new JSONObject();
-                failureReturn.put("message", "enumerate failed");
-                callbackContext.error(failureReturn);
+                //  Process arguments
+                m_argumentsToSetProps = null;
+                try {
+                    JSONObject arguments = args.getJSONObject(0);
+                    arguments = arguments.getJSONObject("options");
+                    m_argumentsToSetProps = arguments;
+                    Log.d(LOG_TAG, String.valueOf(m_argumentsToSetProps));
+                }
+                catch (JSONException je)
+                {
+                    callbackContext.error("Arguments is not a valid JSON object");
+                }
             }
-            else
-                callbackContext.success(scanners);
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    ScannerSetProperties(callbackContext, m_argumentsToSetProps);
+                }
+            });
         }
         else {
 
@@ -156,67 +217,63 @@ public class EnterpriseBarcode extends CordovaPlugin {
         return true;
     }
 
-
-
     //--------------------------------------------------------------------------
     // LOCAL METHODS
     //--------------------------------------------------------------------------
 
     public JSONObject ScannerEnable(CallbackContext callbackContext, JSONObject userSpecifiedArgumentsToEnable)
     {
-        if (zebraExtensions == null)
+        if (emdkProxy == null || !emdkProxy.isReady())
         {
-            //  EMDK could not be loaded
-            return null;
-        }
-        else if (!zebraExtensions.isReady())
-        {
-            //  EMDK is not yet ready
+            Log.w(LOG_TAG, "EMDK Was not ready or not available");
             return null;
         }
         else
-        {
-            //  EMDK is ready, let's go
-            return zebraExtensions.enableScanner(callbackContext, userSpecifiedArgumentsToEnable);
-        }
+            return emdkProxy.enableScanner(callbackContext, userSpecifiedArgumentsToEnable);
     }
 
     public JSONObject ScannerDisable(CallbackContext callbackContext)
     {
-        if (zebraExtensions == null)
+        if (emdkProxy == null || !emdkProxy.isReady())
         {
-            //  EMDK could not be loaded
-            return null;
-        }
-        else if (!zebraExtensions.isReady())
-        {
-            //  EMDK is not yet ready
+            Log.w(LOG_TAG, "EMDK Was not ready or not available");
             return null;
         }
         else
-        {
-            //  EMDK is ready, let's go
-            return zebraExtensions.disableScanner(callbackContext);
-        }
+            return emdkProxy.disableScanner(callbackContext);
     }
 
-    public JSONObject enumerate()
+    public JSONObject ScannerGetProperties(CallbackContext callbackContext)
     {
-        if (zebraExtensions == null)
+        if (emdkProxy == null || !emdkProxy.isReady())
         {
-            //  EMDK could not be loaded
-            return null;
-        }
-        else if (!zebraExtensions.isReady())
-        {
-            //  EMDK is not yet ready
+            Log.w(LOG_TAG, "EMDK Was not ready or not available");
             return null;
         }
         else
+            return emdkProxy.getProperties(callbackContext);
+    }
+
+        public void ScannerSetProperties(CallbackContext callbackContext, JSONObject userSpecifiedArgumentsToSetProps)
         {
-            //  EMDK is ready, let's go
-            return zebraExtensions.enumerateScanners();
+            if (emdkProxy == null || !emdkProxy.isReady())
+            {
+                Log.w(LOG_TAG, "EMDK Was not ready or not available");
+                return;
+            }
+            else
+                emdkProxy.setProperties(callbackContext, userSpecifiedArgumentsToSetProps);
         }
+
+    public JSONObject enumerate(CallbackContext callbackContext)
+    {
+        if (emdkProxy == null || !emdkProxy.isReady())
+        {
+            Log.w(LOG_TAG, "EMDK Was not ready or not available");
+            return null;
+        }
+        else
+            return emdkProxy.enumerateScanners(callbackContext);
     }
 
 }

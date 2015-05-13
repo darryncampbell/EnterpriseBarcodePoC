@@ -58,15 +58,27 @@ EnterpriseBarcode.prototype.enable = function(successCallback, errorCallback, op
     exec(successCallback, errorCallback, "EnterpriseBarcode", "enable", [{"options":options}]);
 };
 
-EnterpriseBarcode.prototype.disable = function(successCallback, errorCallback, options)
+EnterpriseBarcode.prototype.disable = function(successCallback, errorCallback)
 {
-	argscheck.checkArgs('fFO', 'EnterpriseBarcode.disable', arguments);
-	options = options || {};
-	var args = [];
-    exec(successCallback, errorCallback, "EnterpriseBarcode", "disable", args);
+	argscheck.checkArgs('fF', 'EnterpriseBarcode.disable', arguments);
+    exec(successCallback, errorCallback, "EnterpriseBarcode", "disable", []);
+};
+
+EnterpriseBarcode.prototype.getProperties = function(successCallback, errorCallback)
+{
+	argscheck.checkArgs('fF', 'EnterpriseBarcode.getProperties', arguments);
+    exec(successCallback, errorCallback, "EnterpriseBarcode", "getProperties", []);
+};
+
+EnterpriseBarcode.prototype.setProperties = function(successCallback, errorCallback, options)
+{
+	argscheck.checkArgs('fFO', 'EnterpriseBarcode.setProperties', arguments);
+    exec(successCallback, errorCallback, "EnterpriseBarcode", "setProperties", [{"options":options}]);
 };
 
 EnterpriseBarcode.prototype.scanners = {"key":"val"};
 
 module.exports = new EnterpriseBarcode();
+
+
 

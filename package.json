@@ -1,0 +1,20 @@
+{
+  "name": "com-symbol-enterprisebarcode",
+  "version": "0.0.1",
+  "description": "Symbol Enterprise Barcode",
+  "cordova": {
+    "id": "com-symbol-enterprisebarcode",
+    "platforms": [
+      "android"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/darryncampbell/EnterpriseBarcodePoC.git"
+  },
+  "keywords": [
+    "cordova"
+  ],
+  "author": "Darryn Campbell",
+  "license": "MIT"
+}

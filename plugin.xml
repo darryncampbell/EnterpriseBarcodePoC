@@ -22,17 +22,13 @@
         </config-file>
 		
 		<!--framework src="src/android/com.symbol.emdk.jar" custom="true" /-->
+		<framework src="src/android/extras.gradle" custom="true" type="gradleReference" />
 
         <source-file src="src/android/EMDKProxy.java" target-dir="src/com/symbol/enterprisebarcode" />
         <source-file src="src/android/EMDKScannerInterface.java" target-dir="src/com/symbol/enterprisebarcode" />
         <source-file src="src/android/EnterpriseBarcode.java" target-dir="src/com/symbol/enterprisebarcode" />
         <source-file src="src/android/ScannerConfiguration.java" target-dir="src/com/symbol/enterprisebarcode" />
         <source-file src="src/android/com.symbol.emdk.jar" target-dir="lib" />
-		<info>
-			Please ensure you have EMDK for Android 3.0 installed
-			Please set your project properties to include the following:
-			target='Symbol Technologies, Inc.:EMDK 3.0 (API 19):19'
-		</info>
     </platform>
 	
 </plugin>

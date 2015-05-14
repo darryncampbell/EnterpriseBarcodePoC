@@ -13,6 +13,7 @@ This plugin defines an `enterpriseBarcode` object which provides an API for inte
 ## Installation
 
     cordova plugin add https://github.com/darryncampbell/EnterpriseBarcodePoC.git
+__Requires Cordova 5.0 or higher otherwise your application will get build errors.  When updating from a previous Cordova version it is necessary to re-add this plugin__
     
 ## Supported Platforms
 

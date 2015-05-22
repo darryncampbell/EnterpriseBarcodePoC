@@ -31,7 +31,7 @@ The `enterpriseBarcode.enumerate` function queries the device hardware for avail
 
 ### Android Quirks
 
-Currently Barcode functionality is only available if the application is built against the Zebra EMDK target, specify this in your project.properties file prior to building
+Barcode functionality is only available for Zebra mobile devices.
 
 ### Example
 

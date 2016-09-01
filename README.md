@@ -4,6 +4,7 @@
 
 [![npm version](http://img.shields.io/npm/v/com-darryncampbell-enterprisebarcode.svg?style=flat-square)](https://npmjs.org/package/com-darryncampbell-enterprisebarcode "View this project on npm")
 [![npm downloads](http://img.shields.io/npm/dm/com-darryncampbell-enterprisebarcode.svg?style=flat-square)](https://npmjs.org/package/com-darryncampbell-enterprisebarcode "View this project on npm")
+[![npm downloads](http://img.shields.io/npm/dt/com-darryncampbell-enterprisebarcode.svg?style=flat-square)](https://npmjs.org/package/com-darryncampbell-enterprisebarcode "View this project on npm")
 [![npm licence](http://img.shields.io/npm/l/com-darryncampbell-enterprisebarcode.svg?style=flat-square)](https://npmjs.org/package/com-darryncampbell-enterprisebarcode "View this project on npm")
 
 # EnterpriseBarcode

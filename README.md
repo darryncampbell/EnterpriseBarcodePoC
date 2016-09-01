@@ -2,6 +2,10 @@
 *This plugin is provided without guarantee or warranty*
 =========================================================
 
+[![npm version](http://img.shields.io/npm/v/com-darryncampbell-enterprisebarcode.svg?style=flat-square)](https://npmjs.org/package/com-darryncampbell-enterprisebarcode "View this project on npm")
+[![npm downloads](http://img.shields.io/npm/dm/com-darryncampbell-enterprisebarcode.svg?style=flat-square)](https://npmjs.org/package/com-darryncampbell-enterprisebarcode "View this project on npm")
+[![npm licence](http://img.shields.io/npm/l/com-darryncampbell-enterprisebarcode.svg?style=flat-square)](https://npmjs.org/package/com-darryncampbell-enterprisebarcode "View this project on npm")
+
 # EnterpriseBarcode
 This plugin defines an `enterpriseBarcode` object which provides an API for interacting with the hardware scanner on Zebra devices.  The enterpriseBarcode object is not available until after the `deviceready` event.
 

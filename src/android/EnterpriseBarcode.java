@@ -99,14 +99,14 @@ public class EnterpriseBarcode extends CordovaPlugin {
 	{
 		Log.d(LOG_TAG, "On Resume");
         //  EMDK seems reliable without having to re-enable it on resume
-//        InitializeEMDKProxy(null);
+        //InitializeEMDKProxy(null);
 	}
 	
 	public void onPause(boolean multitasking)
 	{
 		Log.d(LOG_TAG, "On Pause");
         //  EMDK Seems reliable without having to disable it on pause
-//        emdkProxy.destroy();
+        //emdkProxy.destroy();
 	}
 
     /**

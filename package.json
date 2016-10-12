@@ -1,7 +1,8 @@
 {
   "name": "com-symbol-enterprisebarcode",
-  "version": "0.0.1",
-  "description": "Symbol Enterprise Barcode",
+  "version": "0.0.4",
+  "description": "Proof of Concept Cordova Wrapper for Symbol Mobile Devices which use EMDK",
+  "main": "enterprisebarcode.js",
   "cordova": {
     "id": "com-symbol-enterprisebarcode",
     "platforms": [

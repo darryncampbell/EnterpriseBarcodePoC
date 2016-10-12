@@ -1,10 +1,10 @@
 {
-  "name": "com-symbol-enterprisebarcode",
+  "name": "com-darryncampbell-enterprisebarcode",
   "version": "0.0.4",
   "description": "Proof of Concept Cordova Wrapper for Symbol Mobile Devices which use EMDK",
   "main": "enterprisebarcode.js",
   "cordova": {
-    "id": "com-symbol-enterprisebarcode",
+    "id": "com-darryncampbell-enterprisebarcode",
     "platforms": [
       "android"
     ]

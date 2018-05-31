@@ -7,6 +7,9 @@
 [![npm downloads](http://img.shields.io/npm/dt/com-darryncampbell-enterprisebarcode.svg?style=flat-square)](https://npmjs.org/package/com-darryncampbell-enterprisebarcode "View this project on npm")
 [![npm licence](http://img.shields.io/npm/l/com-darryncampbell-enterprisebarcode.svg?style=flat-square)](https://npmjs.org/package/com-darryncampbell-enterprisebarcode "View this project on npm")
 
+# Plugin Status - May 2018
+This plugin has a **known issue** on Marshmallow devices & above where the scanner will not re-enable after the device has gone into and out of standby mode.  Some developers have disabled & re-enabled the scanner in the onPause() / onResume() functions to get around this however I would recommend using a different approach to this problem as demonstrated in my [DataWedgeCordova](https://github.com/darryncampbell/DataWedgeCordova) repository and [accompanying blog post](https://developer.zebra.com/community/home/blog/2016/08/04/integrating-datawedge-into-your-cordova-application) 
+
 # EnterpriseBarcode
 This plugin defines an `enterpriseBarcode` object which provides an API for interacting with the hardware scanner on Zebra devices.  The enterpriseBarcode object is not available until after the `deviceready` event.
 
